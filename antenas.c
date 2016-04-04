@@ -57,7 +57,7 @@ void print_mapa(int * mapa, int rows, int cols, Antena * a){
 			if(val == 0){
 				if(a != NULL && a->x == j && a->y == i){
 					printf( ANSI_COLOR_RED "   A"  ANSI_COLOR_RESET);
-				} else { 
+				} else {
 					printf( ANSI_COLOR_GREEN "   A"  ANSI_COLOR_RESET);
 				}
 			} else {
@@ -109,19 +109,24 @@ void actualizar(int * mapa, int rows, int cols, Antena antena){
  * Calcular la distancia máxima en el mapa
  */
 int calcular_max(int * mapa, int rows, int cols){
-
+	int thread_max;
 	int max = 0;
-
+	#pragma omp paralel private(thread_max) shared(m)
+	{
+	thread_max=0;
+	#pragma omp for collapse (2)
 	for(int i=0; i<rows; i++){
 		for(int j=0; j<cols; j++){
 
-			if(m(i,j)>max){
-				max = m(i,j);			
+			if(m(i,j)>thread_max){
+				thread_max = m(i,j);
 			}
-
 		} // j
 	} // i
-
+	
+#pragma omp critical
+	if(thread_max>max) max=thread_max;
+}
 	return max;
 }
 
@@ -184,8 +189,8 @@ int main(int nargs, char ** vargs){
 	if(!antenas){
 		fprintf(stderr,"Error al reservar memoria para las antenas inicales\n");
 		return -1;
-	}	
-	
+	}
+
 	// Leer antenas
 	for(int i=0; i<nAntenas; i++){
 		antenas[i].x = atoi(vargs[5+i*2]);
@@ -230,18 +235,18 @@ int main(int nargs, char ** vargs){
 
 	// Contador de antenas
 	int nuevas = 0;
-	
+
 	while(1){
 
 		// Calcular el máximo
 		int max = calcular_max(mapa, rows, cols);
 
 		// Salimos si ya hemos cumplido el maximo
-		if (max <= distMax) break;	
-		
+		if (max <= distMax) break;
+
 		// Incrementamos el contador
 		nuevas++;
-		
+
 		// Calculo de la nueva antena y actualización del mapa
 		Antena antena = nueva_antena(mapa, rows, cols, max);
 		actualizar(mapa,rows,cols,antena);
@@ -258,7 +263,7 @@ int main(int nargs, char ** vargs){
 	//
 
 	// tiempo
-	tiempo = cp_Wtime() - tiempo;	
+	tiempo = cp_Wtime() - tiempo;
 
 	// Salida
 	printf("Result: %d\n",nuevas);
@@ -266,6 +271,3 @@ int main(int nargs, char ** vargs){
 
 	return 0;
 }
-
-
-
