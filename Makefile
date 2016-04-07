@@ -1,6 +1,6 @@
 
 
-FLAGS=-std=c11 -O3
+FLAGS=-std=c11 -O3 -fopenmp
 #FLAGS=-std=c11 -O0 -g -pg
 
 all: antenas antenas_debug

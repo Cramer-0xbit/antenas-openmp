@@ -89,23 +89,20 @@ int manhattan(Antena a, int y, int x){
 void actualizar(int * mapa, int rows, int cols, Antena antena){
 
 	m(antena.y,antena.x) = 0;
+	int nuevadist=0;
 	#pragma omp parrallel \
 	shared(m)\
-	private(j)
+	private(nuevadist)
 	{
-		#pragma omp for
+		#pragma omp for 
 		for(int i=0; i<rows; i++){
 			for(int j=0; j<cols; j++){
 				int nuevadist = manhattan(antena,i,j);
-				if(nuevadist < m(i,j)){
-					m(i,j) = nuevadist;
+				if(nuevadist < m(i,j)) m(i,j) = nuevadist;
 				}
-
 			} // j
 		} // i
-	}
 }
-
 
 
 /**
@@ -129,10 +126,12 @@ int calcular_max(int * mapa, int rows, int cols){
 
 				} // j
 			} // i
-			#pragma omp atomic
+			#pragma omp critical
+			{
 				if(thread_max>max){
 					max= thread_max;
 				}
+			}
 			}
 
 	return max;
@@ -222,9 +221,10 @@ int main(int nargs, char ** vargs){
 	int * mapa = malloc((size_t) (rows*cols) * sizeof(int) );
 
 	// Iniciar el mapa con el valor MAX INT
-	#pragma omp parallel for shared(mapa,INT_MAX), private( i )
+int max_value=INT_MAX;
+	#pragma omp parallel for shared(mapa,max_value)
 	for(int i=0; i<(rows*cols); i++){
-		mapa[i] = INT_MAX;
+		mapa[i] = max_value;
 	}
 
 	// Colocar las antenas iniciales
