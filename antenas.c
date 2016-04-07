@@ -16,8 +16,7 @@
 
 // Include para las utilidades de computación paralela
 #include "cputils.h"
-
-
+#include <omp.h>
 /**
  * Estructura antena
  */
@@ -84,23 +83,27 @@ int manhattan(Antena a, int y, int x){
 
 
 /**
- * Actualizar el mapa con la nueva antena
+ * Actualizar el mapa con la nueva antena	tiempo = cp_Wtime() - tiempo;
+
  */
 void actualizar(int * mapa, int rows, int cols, Antena antena){
 
 	m(antena.y,antena.x) = 0;
-	#pragma omp paralel private(nuevadist) shared(m)
+	#pragma omp parrallel \
+	shared(m)\
+	private(j)
 	{
-	#pragma omp paralel for nowait collapse(1)
-	for(int i=0; i<rows; i++){
-		for(int j=0; j<cols; j++){
+		#pragma omp for
+		for(int i=0; i<rows; i++){
+			for(int j=0; j<cols; j++){
+				int nuevadist = manhattan(antena,i,j);
+				if(nuevadist < m(i,j)){
+					m(i,j) = nuevadist;
+				}
 
-			int nuevadist = manhattan(antena,i,j);
-			#pragma omp critical
-			if(nuevadist < m(i,j)) m(i,j) = nuevadist;
-		} // j
-	} // i
-}
+			} // j
+		} // i
+	}
 }
 
 
@@ -109,24 +112,29 @@ void actualizar(int * mapa, int rows, int cols, Antena antena){
  * Calcular la distancia máxima en el mapa
  */
 int calcular_max(int * mapa, int rows, int cols){
-	int thread_max;
+
 	int max = 0;
-	#pragma omp paralel private(thread_max) shared(m)
+	int thread_max=0;
+	#pragma omp parrallel \
+ 	shared(max,m)\
+ 	private (thread_max,j)
 	{
-	thread_max=0;
-	#pragma omp for collapse (1)
-	for(int i=0; i<rows; i++){
-		for(int j=0; j<cols; j++){
+		#pragma omp for
+			for(int i=0; i<rows; i++){
+				for(int j=0; j<cols; j++){
 
-			if(m(i,j)>thread_max){
-				thread_max = m(i,j);
+					if(m(i,j)>thread_max){
+			 			thread_max= m(i,j);
+					}
+
+				} // j
+			} // i
+			#pragma omp atomic
+				if(thread_max>max){
+					max= thread_max;
+				}
 			}
-		} // j
-	} // i
 
-#pragma omp critical
-	if(thread_max>max) max=thread_max;
-}
 	return max;
 }
 
@@ -214,6 +222,7 @@ int main(int nargs, char ** vargs){
 	int * mapa = malloc((size_t) (rows*cols) * sizeof(int) );
 
 	// Iniciar el mapa con el valor MAX INT
+	#pragma omp parallel for shared(mapa,INT_MAX), private( i )
 	for(int i=0; i<(rows*cols); i++){
 		mapa[i] = INT_MAX;
 	}
